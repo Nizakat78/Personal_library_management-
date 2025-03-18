@@ -1,8 +1,9 @@
-import json
+import os
 
 class LibraryManager:
     def __init__(self):
         self.books = []  # List to store books
+        self.library_file = "library.txt"
         self.load_library()
 
     def display_menu(self):
@@ -20,34 +21,25 @@ class LibraryManager:
     def add_book(self):
         title = input("Enter the book title: ")
         author = input("Enter the author: ")
-        year = int(input("Enter the publication year: "))
+        year = input("Enter the publication year: ")
         genre = input("Enter the genre: ")
-        read_status = input("Have you read this book? (yes/no): ").lower() == 'yes'
+        read_status = input("Have you read this book? (yes/no): ").strip().lower() == 'yes'
 
-        book = {
-            'title': title,
-            'author': author,
-            'year': year,
-            'genre': genre,
-            'read': read_status
-        }
-
+        book = f"{title},{author},{year},{genre},{'Read' if read_status else 'Unread'}"
         self.books.append(book)
         print("Book added successfully!")
+        self.save_library()
 
     def remove_book(self):
-        title = input("Enter the title of the book to remove: ")
-        book_found = False
-
-        for book in self.books:
-            if book['title'].lower() == title.lower():
-                self.books.remove(book)
-                print(f"Book '{title}' removed successfully!")
-                book_found = True
-                break
-
-        if not book_found:
+        title = input("Enter the title of the book to remove: ").strip().lower()
+        updated_books = [book for book in self.books if not book.lower().startswith(title + ",")]
+        
+        if len(updated_books) == len(self.books):
             print(f"Book with title '{title}' not found!")
+        else:
+            self.books = updated_books
+            self.save_library()
+            print(f"Book '{title}' removed successfully!")
 
     def search_book(self):
         print("Search by:")
@@ -56,53 +48,51 @@ class LibraryManager:
         choice = input("Enter your choice: ")
 
         if choice == '1':
-            title = input("Enter the title: ")
-            self.search_by_title(title)
+            title = input("Enter the title: ").strip().lower()
+            matching_books = [book for book in self.books if title in book.split(',')[0].lower()]
         elif choice == '2':
-            author = input("Enter the author: ")
-            self.search_by_author(author)
+            author = input("Enter the author: ").strip().lower()
+            matching_books = [book for book in self.books if author in book.split(',')[1].lower()]
         else:
             print("Invalid choice!")
+            return
 
-    def search_by_title(self, title):
-        matching_books = [book for book in self.books if title.lower() in book['title'].lower()]
-        self.display_books(matching_books)
-
-    def search_by_author(self, author):
-        matching_books = [book for book in self.books if author.lower() in book['author'].lower()]
         self.display_books(matching_books)
 
     def display_books(self, books=None):
         if books is None:
             books = self.books
-        if len(books) == 0:
+
+        if not books:
             print("No books found!")
         else:
-            print("Matching Books:")
+            print("\nMatching Books:")
             for i, book in enumerate(books, start=1):
-                read_status = "Read" if book['read'] else "Unread"
-                print(f"{i}. {book['title']} by {book['author']} ({book['year']}) - {book['genre']} - {read_status}")
+                title, author, year, genre, read_status = book.split(',')
+                print(f"{i}. {title} by {author} ({year}) - {genre} - {read_status}")
 
     def display_statistics(self):
         total_books = len(self.books)
         if total_books == 0:
             print("No books in the library!")
-        else:
-            read_books = sum(1 for book in self.books if book['read'])
-            read_percentage = (read_books / total_books) * 100
-            print(f"Total books: {total_books}")
-            print(f"Percentage read: {read_percentage:.2f}%")
+            return
+
+        read_books = sum(1 for book in self.books if book.endswith("Read"))
+        read_percentage = (read_books / total_books) * 100
+
+        print(f"Total books: {total_books}")
+        print(f"Percentage read: {read_percentage:.2f}%")
 
     def load_library(self):
-        try:
-            with open("library.json", "r") as file:
-                self.books = json.load(file)
-        except FileNotFoundError:
+        if os.path.exists(self.library_file):
+            with open(self.library_file, "r") as file:
+                self.books = [line.strip() for line in file.readlines()]
+        else:
             self.books = []
 
     def save_library(self):
-        with open("library.json", "w") as file:
-            json.dump(self.books, file)
+        with open(self.library_file, "w") as file:
+            file.write("\n".join(self.books))
         print("Library saved to file.")
 
     def run(self):
